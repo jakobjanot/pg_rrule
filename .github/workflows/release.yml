@@ -1,0 +1,176 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "TAG=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            postgresql-server-dev-16 \
+            libical-dev \
+            pkg-config
+      
+      - name: Create symlink for control file
+        run: |
+          ln -sf sql/pg_rrule.control pg_rrule.control
+      
+      - name: Build extension
+        run: |
+          make clean
+          make
+      
+      - name: Create binary artifact
+        run: |
+          mkdir -p release/pg_rrule-${{ steps.version.outputs.VERSION }}
+          cp pg_rrule.so release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          cp sql/pg_rrule.control release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          cp sql/pg_rrule--1.0.0.sql release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          cp README.md release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          cp Makefile release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          
+          cd release
+          tar -czf pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz pg_rrule-${{ steps.version.outputs.VERSION }}
+      
+      - name: Create source artifact
+        run: |
+          cd release
+          git archive --format=tar.gz --prefix=pg_rrule-${{ steps.version.outputs.VERSION }}/ HEAD > pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
+      
+      - name: Generate checksums
+        run: |
+          cd release
+          sha256sum pg_rrule-*.tar.gz > checksums.txt
+          cat checksums.txt
+      
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }} -f docker/Dockerfile .
+          docker tag ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }} ghcr.io/${{ github.repository }}:latest
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Push Docker images
+        run: |
+          docker push ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
+          docker push ghcr.io/${{ github.repository }}:latest
+      
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## What's New in ${{ steps.version.outputs.TAG }}
+          
+          ### Installation
+          
+          #### Docker (Recommended)
+          ```bash
+          docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
+          ```
+          
+          #### From Binary
+          ```bash
+          # Download and extract
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.TAG }}/pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
+          tar -xzf pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
+          cd pg_rrule-${{ steps.version.outputs.VERSION }}
+          
+          # Install (requires PostgreSQL 12-16)
+          sudo cp pg_rrule.so /usr/lib/postgresql/16/lib/
+          sudo cp pg_rrule.control /usr/share/postgresql/16/extension/
+          sudo cp pg_rrule--1.0.0.sql /usr/share/postgresql/16/extension/
+          ```
+          
+          #### From Source
+          ```bash
+          # Download source
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.TAG }}/pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
+          tar -xzf pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
+          cd pg_rrule-${{ steps.version.outputs.VERSION }}
+          
+          # Build and install
+          ln -sf sql/pg_rrule.control pg_rrule.control
+          make
+          sudo make install
+          ```
+          
+          ### Verification
+          After installation:
+          ```sql
+          CREATE EXTENSION pg_rrule;
+          SELECT rrule_is_valid('FREQ=DAILY');
+          ```
+          
+          ### Checksums
+          See `checksums.txt` in assets for SHA256 checksums.
+          EOF
+          
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: Release ${{ steps.version.outputs.TAG }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            release/pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
+            release/pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
+            release/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Release ${{ steps.version.outputs.TAG }} created successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Binary: pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- Source: pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.TAG }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Docker Image](https://github.com/${{ github.repository }}/pkgs/container/pg_rrule)" >> $GITHUB_STEP_SUMMARY

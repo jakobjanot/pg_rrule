@@ -1,0 +1,140 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-c:
+    name: Lint C Code
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang-format \
+            cppcheck
+      
+      - name: Check C code formatting
+        run: |
+          # Check if code is properly formatted (dry-run)
+          find src -name "*.c" -exec clang-format --dry-run --Werror {} \; || {
+            echo "Code formatting issues found. Run: find src -name '*.c' -exec clang-format -i {} \;"
+            exit 1
+          }
+      
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=all --suppress=missingIncludeSystem --error-exitcode=1 src/
+
+  lint-sql:
+    name: Lint SQL Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check SQL syntax
+        run: |
+          # Basic SQL syntax check
+          for file in sql/*.sql tests/*.sql examples/*.sql; do
+            if [ -f "$file" ]; then
+              echo "Checking $file..."
+              # Check for basic syntax issues
+              if grep -q "^[[:space:]]*\t" "$file"; then
+                echo "ERROR: $file contains tabs. Use spaces for indentation."
+                exit 1
+              fi
+            fi
+          done
+
+  lint-yaml:
+    name: Lint YAML Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install yamllint
+        run: pip install yamllint
+      
+      - name: Lint YAML files
+        run: |
+          yamllint -d "{extends: default, rules: {line-length: {max: 120}}}" \
+            .github/workflows/*.yml \
+            docker/docker-compose.yml \
+            examples/docker-compose.yml
+
+  lint-docker:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/Dockerfile
+          failure-threshold: warning
+
+  check-docs:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for broken links in markdown
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          config-file: '.github/markdown-link-check-config.json'
+          folder-path: 'docs'
+      
+      - name: Check README exists
+        run: |
+          if [ ! -f README.md ]; then
+            echo "README.md is missing!"
+            exit 1
+          fi
+          
+          # Check if README contains key sections
+          for section in "Installation" "Usage" "Features"; do
+            if ! grep -q "$section" README.md; then
+              echo "Warning: README.md is missing '$section' section"
+            fi
+          done
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'

@@ -1,5 +1,9 @@
 # pg_rrule - PostgreSQL iCalendar RRULE Extension
 
+[![Build](https://github.com/jakobjanot/pg_rrule/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/jakobjanot/pg_rrule/actions/workflows/docker-publish.yml)
+[![Tests](https://github.com/jakobjanot/pg_rrule/actions/workflows/test.yml/badge.svg)](https://github.com/jakobjanot/pg_rrule/actions/workflows/test.yml)
+[![Quality](https://github.com/jakobjanot/pg_rrule/actions/workflows/quality.yml/badge.svg)](https://github.com/jakobjanot/pg_rrule/actions/workflows/quality.yml)
+
 A PostgreSQL extension that provides support for iCalendar recurrence rules (RRULE) using libical.
 
 ## Features
@@ -236,6 +240,30 @@ Validates an RRULE string without creating an rrule type.
 DROP EXTENSION pg_rrule CASCADE;
 ```
 
+## Development & CI/CD
+
+This project uses GitHub Actions for automated testing, building, and releases.
+
+- **Automated Tests**: Run on every push and PR
+- **Multi-version PostgreSQL**: Tested against PostgreSQL 12-16
+- **Docker Images**: Automatically published to GitHub Container Registry
+- **Releases**: Create a tag `vX.Y.Z` to trigger automated release builds
+
+See [docs/CI_CD.md](docs/CI_CD.md) for complete CI/CD documentation.
+
+### Creating a Release
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+This automatically:
+1. Runs all tests
+2. Builds binary and source artifacts
+3. Publishes Docker image to `ghcr.io/jakobjanot/pg_rrule:v1.0.0`
+4. Creates GitHub release with downloadable artifacts
+
 ## License
 
 MIT License
@@ -243,3 +271,9 @@ MIT License
 ## Contributing
 
 Contributions are welcome! Please submit issues and pull requests on GitHub.
+
+All pull requests automatically run:
+- Compilation tests
+- Integration tests
+- Code quality checks
+- Multi-version PostgreSQL compatibility tests

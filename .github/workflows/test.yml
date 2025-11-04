@@ -1,0 +1,211 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-docker:
+    name: Test in Docker
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Build Docker development image
+        run: |
+          docker-compose -f docker/docker-compose.yml build dev
+      
+      - name: Start PostgreSQL
+        run: |
+          docker-compose -f docker/docker-compose.yml up -d dev
+          
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if docker-compose -f docker/docker-compose.yml exec -T dev pg_isready -U postgres >/dev/null 2>&1; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "PostgreSQL failed to start"
+              docker-compose -f docker/docker-compose.yml logs dev
+              exit 1
+            fi
+            sleep 1
+          done
+      
+      - name: Build extension
+        run: |
+          docker-compose -f docker/docker-compose.yml exec -T dev bash -c "cd /workspace && make clean && make && make install"
+      
+      - name: Run test suite
+        run: |
+          docker-compose -f docker/docker-compose.yml exec -T dev psql -U postgres -d testdb -c "CREATE EXTENSION pg_rrule;"
+          docker-compose -f docker/docker-compose.yml exec -T dev psql -U postgres -d testdb -f /workspace/tests/test.sql
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker-compose -f docker/docker-compose.yml down -v
+
+  test-native:
+    name: Test Native Build
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            postgresql-server-dev-16 \
+            libical-dev \
+            pkg-config
+      
+      - name: Create symlink for control file
+        run: |
+          ln -sf sql/pg_rrule.control pg_rrule.control
+      
+      - name: Build extension
+        run: |
+          make clean
+          make
+      
+      - name: Install extension
+        run: |
+          sudo make install
+      
+      - name: Run tests
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: testdb
+        run: |
+          psql -c "CREATE EXTENSION pg_rrule;"
+          psql -f tests/test.sql
+
+  test-multiple-postgres:
+    name: Test PostgreSQL ${{ matrix.postgres }}
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        postgres: [12, 13, 14, 15, 16]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Start PostgreSQL ${{ matrix.postgres }}
+        run: |
+          docker run -d \
+            --name postgres-test \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=testdb \
+            -p 5432:5432 \
+            postgres:${{ matrix.postgres }}
+      
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            if docker exec postgres-test pg_isready -U postgres >/dev/null 2>&1; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            sleep 1
+          done
+      
+      - name: Install dependencies in container
+        run: |
+          docker exec postgres-test bash -c "
+            apt-get update && 
+            apt-get install -y build-essential postgresql-server-dev-${{ matrix.postgres }} libical-dev pkg-config git
+          "
+      
+      - name: Copy source to container
+        run: |
+          docker cp . postgres-test:/tmp/pg_rrule
+      
+      - name: Build and test
+        run: |
+          docker exec postgres-test bash -c "
+            cd /tmp/pg_rrule &&
+            ln -sf sql/pg_rrule.control pg_rrule.control &&
+            make clean && make && make install &&
+            psql -U postgres -d testdb -c 'CREATE EXTENSION pg_rrule;' &&
+            psql -U postgres -d testdb -c 'SELECT rrule_is_valid(\"FREQ=DAILY\");' &&
+            echo 'Tests passed for PostgreSQL ${{ matrix.postgres }}'
+          "
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop postgres-test
+          docker rm postgres-test
+
+  validate-examples:
+    name: Validate Examples
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Build production image
+        run: |
+          docker build -t pg_rrule:test -f docker/Dockerfile .
+      
+      - name: Test example application
+        run: |
+          cd examples
+          # Use the locally built image
+          sed -i 's|ghcr.io/jakobjanot/pg_rrule:latest|pg_rrule:test|g' docker-compose.yml
+          
+          # Start services
+          docker-compose up -d postgres
+          
+          # Wait for database
+          sleep 10
+          
+          # Build and run app
+          docker-compose up --build app
+          
+          # Check if app ran successfully
+          if docker-compose logs app | grep -q "All demonstrations complete"; then
+            echo "Example application ran successfully!"
+          else
+            echo "Example application failed!"
+            docker-compose logs
+            exit 1
+          fi
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd examples
+          docker-compose down -v

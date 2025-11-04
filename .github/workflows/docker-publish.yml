@@ -51,9 +51,11 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push Docker image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: ./docker/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -62,18 +64,48 @@ jobs:
 
       - name: Test extension in Docker
         run: |
+          # Get the image tag
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.pull_request.number }}"
+          fi
+          
+          # Start PostgreSQL with pg_rrule
           docker run --rm \
             -e POSTGRES_PASSWORD=postgres \
             -e POSTGRES_DB=testdb \
             --name pg_rrule_test \
-            -d ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+            -d ${IMAGE_TAG}
           
-          # Wait for PostgreSQL to start
-          sleep 10
+          # Wait for PostgreSQL to be ready
+          echo "Waiting for PostgreSQL to start..."
+          for i in {1..30}; do
+            if docker exec pg_rrule_test pg_isready -U postgres -d testdb >/dev/null 2>&1; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "PostgreSQL failed to start"
+              docker logs pg_rrule_test
+              exit 1
+            fi
+            sleep 1
+          done
           
-          # Run basic test
+          # Run tests
+          echo "Creating extension..."
           docker exec pg_rrule_test psql -U postgres -d testdb -c "CREATE EXTENSION pg_rrule;"
-          docker exec pg_rrule_test psql -U postgres -d testdb -c "SELECT rrule_is_valid('FREQ=DAILY');"
+          
+          echo "Testing rrule_is_valid..."
+          docker exec pg_rrule_test psql -U postgres -d testdb -tAc "SELECT rrule_is_valid('FREQ=DAILY');" | grep -q "t"
+          
+          echo "Testing rrule_next_occurrence..."
+          docker exec pg_rrule_test psql -U postgres -d testdb -c "SELECT rrule_next_occurrence('FREQ=DAILY'::rrule, NOW(), NOW());"
+          
+          echo "Testing rrule_next_occurrences..."
+          docker exec pg_rrule_test psql -U postgres -d testdb -c "SELECT rrule_next_occurrences('FREQ=DAILY'::rrule, NOW(), 5, NOW());"
+          
+          echo "All tests passed!"
           
           # Cleanup
           docker stop pg_rrule_test
