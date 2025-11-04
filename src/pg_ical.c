@@ -49,8 +49,6 @@ icaltime_to_timestamp(struct icaltimetype icaltime)
     TimestampTz result;
     int tz = 0;
 
-    elog(NOTICE, "icaltime_to_timestamp: year=%d month=%d day=%d", icaltime.year, icaltime.month, icaltime.day);
-    
     tm.tm_year = icaltime.year;
     tm.tm_mon = icaltime.month;
     tm.tm_mday = icaltime.day;
@@ -59,7 +57,6 @@ icaltime_to_timestamp(struct icaltimetype icaltime)
     tm.tm_sec = icaltime.second;
     tm.tm_isdst = 0;
 
-    elog(NOTICE, "Calling tm2timestamp");
     if (tm2timestamp(&tm, fsec, &tz, &result) != 0)
         ereport(ERROR,
                 (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
@@ -285,30 +282,19 @@ rrule_next_occurrence(PG_FUNCTION_ARGS)
     TimestampTz result;
     char *rrule_str;
 
-    elog(NOTICE, "rrule_next_occurrence called");
-    
     /* Parse RRULE */
     rrule_str = text_to_cstring(r);
-    elog(NOTICE, "RRULE string: %s", rrule_str);
     recur = icalrecurrencetype_from_string(rrule_str);
-    elog(NOTICE, "RRULE parsed, freq=%d", recur.freq);
     
     /* Convert timestamps */
     dtstart = timestamp_to_icaltime(dtstart_ts);
-    elog(NOTICE, "dtstart converted");
     after = timestamp_to_icaltime(after_ts);
-    elog(NOTICE, "after converted");
 
     /* Find next occurrence */
-    elog(NOTICE, "Creating iterator");
     ritr = icalrecur_iterator_new(recur, dtstart);
-    elog(NOTICE, "Iterator created");
     next = icalrecur_iterator_next(ritr);
     while (!icaltime_is_null_time(next))
     {
-        elog(NOTICE, "Got occurrence year=%d", next.year);
-        /* Manual comparison to avoid timezone issues */
-        elog(NOTICE, "Comparing times");
         if (next.year > after.year ||
             (next.year == after.year && next.month > after.month) ||
             (next.year == after.year && next.month == after.month && next.day > after.day) ||
@@ -317,13 +303,10 @@ rrule_next_occurrence(PG_FUNCTION_ARGS)
               (next.hour == after.hour && next.minute > after.minute) ||
               (next.hour == after.hour && next.minute == after.minute && next.second > after.second))))
         {
-            elog(NOTICE, "Found matching occurrence, converting to timestamp");
             result = icaltime_to_timestamp(next);
-            elog(NOTICE, "Converted successfully");
             icalrecur_iterator_free(ritr);
             PG_RETURN_TIMESTAMPTZ(result);
         }
-        elog(NOTICE, "Getting next occurrence");
         next = icalrecur_iterator_next(ritr);
     }
     
