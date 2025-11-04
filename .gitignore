@@ -5,8 +5,8 @@
 *.sql.in
 src/*.o
 
-# Symlinked control file (actual file is in sql/)
-pg_rrule.control
+# Symlinked control file in root (actual file is in sql/)
+/pg_rrule.control
 
 # Test results
 results/
