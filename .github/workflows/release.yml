@@ -42,14 +42,11 @@ jobs:
             libical-dev \
             pkg-config
       
-      - name: Create symlink for control file
-        run: |
-          ln -sf sql/pg_rrule.control pg_rrule.control
-          ls -la pg_rrule.control
-      
       - name: Build extension
         run: |
+          ln -sf sql/pg_rrule.control pg_rrule.control
           make clean
+          ln -sf sql/pg_rrule.control pg_rrule.control
           make
       
       - name: Create binary artifact
