@@ -111,6 +111,7 @@ jobs:
       - name: Build extension
         run: |
           ln -sf sql/pg_rrule.control pg_rrule.control
+          export PKG_CONFIG_PATH="$(brew --prefix libical)/lib/pkgconfig:$PKG_CONFIG_PATH"
           make
       
       - name: Create binary artifact
