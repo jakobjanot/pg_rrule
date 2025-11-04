@@ -108,10 +108,16 @@ jobs:
           brew install postgresql@16 libical pkg-config
           echo "$(brew --prefix postgresql@16)/bin" >> $GITHUB_PATH
       
+      - name: Verify libical installation
+        run: |
+          echo "Checking libical..."
+          brew list libical
+          pkg-config --cflags libical || echo "pkg-config failed"
+          pkg-config --libs libical || echo "pkg-config libs failed"
+      
       - name: Build extension
         run: |
           ln -sf sql/pg_rrule.control pg_rrule.control
-          export PKG_CONFIG_PATH="$(brew --prefix libical)/lib/pkgconfig:$PKG_CONFIG_PATH"
           make
       
       - name: Create binary artifact
