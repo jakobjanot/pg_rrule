@@ -7,14 +7,14 @@ OBJS = src/pg_rrule.o
 # Don't clean it
 EXTRA_CLEAN =
 
-# macOS linking fix: allow undefined symbols (they'll be resolved at runtime)
-ifeq ($(shell uname),Darwin)
-	LDFLAGS += -undefined dynamic_lookup
-endif
-
 # libical flags
 PG_CPPFLAGS = $(shell pkg-config --cflags libical)
 SHLIB_LINK = $(shell pkg-config --libs libical)
+
+# macOS linking fix: allow undefined symbols (they'll be resolved at runtime)
+ifeq ($(shell uname),Darwin)
+	SHLIB_LINK += -undefined dynamic_lookup
+endif
 
 # PostgreSQL build system
 PG_CONFIG = pg_config
