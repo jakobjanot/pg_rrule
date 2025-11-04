@@ -105,19 +105,14 @@ jobs:
       
       - name: Install dependencies
         run: |
-          brew install postgresql@16 libical pkg-config
+          brew install postgresql@16 libical icu4c pkg-config
           echo "$(brew --prefix postgresql@16)/bin" >> $GITHUB_PATH
-      
-      - name: Verify libical installation
-        run: |
-          echo "Checking libical..."
-          brew list libical
-          pkg-config --cflags libical || echo "pkg-config failed"
-          pkg-config --libs libical || echo "pkg-config libs failed"
       
       - name: Build extension
         run: |
           ln -sf sql/pg_rrule.control pg_rrule.control
+          # Set PKG_CONFIG_PATH to include icu4c (keg-only formula)
+          export PKG_CONFIG_PATH="$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix libical)/lib/pkgconfig:$PKG_CONFIG_PATH"
           make
       
       - name: Create binary artifact
