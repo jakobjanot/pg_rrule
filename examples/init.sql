@@ -1,7 +1,7 @@
--- Initialize the database with pg_ical extension and sample data
+-- Initialize the database with pg_rrule extension and sample data
 
 -- Enable the extension
-CREATE EXTENSION IF NOT EXISTS pg_ical;
+CREATE EXTENSION IF NOT EXISTS pg_rrule;
 
 -- Create events table
 CREATE TABLE events (
@@ -39,5 +39,5 @@ ORDER BY next_occurrence;
 -- GRANT ALL ON events TO caluser;
 -- GRANT ALL ON upcoming_events TO caluser;
 
-\echo 'Database initialized with pg_ical extension!'
+\echo 'Database initialized with pg_rrule extension!'
 \echo 'Sample events created. Try: SELECT * FROM upcoming_events;'

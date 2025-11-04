@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: ghcr.io/jakobjanot/pg_ical:latest
+    image: ghcr.io/jakobjanot/pg_rrule:latest
     environment:
       POSTGRES_DB: calendar
       POSTGRES_USER: caluser

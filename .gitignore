@@ -6,7 +6,7 @@
 src/*.o
 
 # Symlinked control file (actual file is in sql/)
-pg_ical.control
+pg_rrule.control
 
 # Test results
 results/

@@ -1,9 +1,9 @@
 #!/bin/bash
-# Quick test script for pg_ical examples
+# Quick test script for pg_rrule examples
 
 set -e
 
-echo "🧪 Testing pg_ical Examples"
+echo "🧪 Testing pg_rrule Examples"
 echo "============================"
 echo
 
@@ -22,7 +22,7 @@ done
 echo
 
 # Test 2: Try to start PostgreSQL only
-echo "🚀 Starting PostgreSQL with pg_ical..."
+echo "🚀 Starting PostgreSQL with pg_rrule..."
 docker-compose up -d postgres
 
 # Wait for PostgreSQL to be ready
@@ -42,12 +42,12 @@ done
 echo
 
 # Test 3: Verify extension is installed
-echo "🔍 Verifying pg_ical extension..."
-result=$(docker-compose exec -T postgres psql -U caluser -d calendar -tAc "SELECT extname FROM pg_extension WHERE extname = 'pg_ical';")
-if [ "$result" = "pg_ical" ]; then
-    echo "   ✓ pg_ical extension is installed"
+echo "🔍 Verifying pg_rrule extension..."
+result=$(docker-compose exec -T postgres psql -U caluser -d calendar -tAc "SELECT extname FROM pg_extension WHERE extname = 'pg_rrule';")
+if [ "$result" = "pg_rrule" ]; then
+    echo "   ✓ pg_rrule extension is installed"
 else
-    echo "   ✗ pg_ical extension not found!"
+    echo "   ✗ pg_rrule extension not found!"
     exit 1
 fi
 echo

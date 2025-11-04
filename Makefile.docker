@@ -3,7 +3,7 @@
 .PHONY: help docker-build docker-dev docker-test docker-clean docker-shell docker-prod docker-publish
 
 help:
-	@echo "Docker commands for pg_ical development:"
+	@echo "Docker commands for pg_rrule development:"
 	@echo ""
 	@echo "  make -f Makefile.docker docker-build    - Build development Docker image"
 	@echo "  make -f Makefile.docker docker-dev      - Start development environment"
@@ -31,8 +31,8 @@ docker-test: docker-dev
 	@echo "Building extension..."
 	docker-compose -f docker/docker-compose.yml exec -T dev bash -c "cd /workspace && make clean && make && make install"
 	@echo "Running tests..."
-	docker-compose -f docker/docker-compose.yml exec -T dev psql -U postgres -d testdb -c "DROP EXTENSION IF EXISTS pg_ical CASCADE;"
-	docker-compose -f docker/docker-compose.yml exec -T dev psql -U postgres -d testdb -c "CREATE EXTENSION pg_ical;"
+	docker-compose -f docker/docker-compose.yml exec -T dev psql -U postgres -d testdb -c "DROP EXTENSION IF EXISTS pg_rrule CASCADE;"
+	docker-compose -f docker/docker-compose.yml exec -T dev psql -U postgres -d testdb -c "CREATE EXTENSION pg_rrule;"
 	docker-compose -f docker/docker-compose.yml exec -T dev psql -U postgres -d testdb -f /workspace/tests/test.sql
 
 # Open interactive shell in development container
@@ -41,9 +41,9 @@ docker-shell:
 
 # Build production image
 docker-prod:
-	docker build -t pg_ical:latest -f docker/Dockerfile .
-	@echo "Production image built: pg_ical:latest"
-	@echo "Test with: docker run --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 pg_ical:latest"
+	docker build -t pg_rrule:latest -f docker/Dockerfile .
+	@echo "Production image built: pg_rrule:latest"
+	@echo "Test with: docker run --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 pg_rrule:latest"
 
 # Clean up Docker resources
 docker-clean:
@@ -57,12 +57,12 @@ docker-publish:
 		echo "Usage: GITHUB_USERNAME=yourusername make -f Makefile.docker docker-publish"; \
 		exit 1; \
 	fi
-	docker build -t ghcr.io/$(GITHUB_USERNAME)/pg_ical:latest -f Dockerfile .
+	docker build -t ghcr.io/$(GITHUB_USERNAME)/pg_rrule:latest -f Dockerfile .
 	@echo ""
 	@echo "Image tagged for GitHub Container Registry:"
-	@echo "  ghcr.io/$(GITHUB_USERNAME)/pg_ical:latest"
+	@echo "  ghcr.io/$(GITHUB_USERNAME)/pg_rrule:latest"
 	@echo ""
 	@echo "To push to GitHub Container Registry:"
 	@echo "  1. Create GitHub Personal Access Token with 'write:packages' scope"
 	@echo "  2. echo \$$GITHUB_TOKEN | docker login ghcr.io -u $(GITHUB_USERNAME) --password-stdin"
-	@echo "  3. docker push ghcr.io/$(GITHUB_USERNAME)/pg_ical:latest"
+	@echo "  3. docker push ghcr.io/$(GITHUB_USERNAME)/pg_rrule:latest"

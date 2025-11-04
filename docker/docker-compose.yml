@@ -5,7 +5,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.dev
-    container_name: pg_ical_dev
+    container_name: pg_rrule_dev
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: testdb
@@ -23,7 +23,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-    container_name: pg_ical_prod
+    container_name: pg_rrule_prod
     environment:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: testdb

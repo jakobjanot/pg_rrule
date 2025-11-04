@@ -1,6 +1,6 @@
-# Docker Setup for pg_ical
+# Docker Setup for pg_rrule
 
-This document explains how to use Docker for development, testing, and distribution of the pg_ical extension.
+This document explains how to use Docker for development, testing, and distribution of the pg_rrule extension.
 
 ## Quick Start
 
@@ -27,7 +27,7 @@ make -f Makefile.docker docker-prod
 docker run --rm \
   -e POSTGRES_PASSWORD=postgres \
   -p 5432:5432 \
-  pg_ical:latest
+  pg_rrule:latest
 ```
 
 ## Available Commands
@@ -93,7 +93,7 @@ GITHUB_USERNAME=your-username make -f Makefile.docker docker-publish
 echo $GITHUB_TOKEN | docker login ghcr.io -u your-username --password-stdin
 
 # 3. Push image
-docker push ghcr.io/your-username/pg_ical:latest
+docker push ghcr.io/your-username/pg_rrule:latest
 ```
 
 ### Automated GitHub Actions
@@ -117,17 +117,17 @@ git push origin v1.0.0
 
 ```bash
 # Pull from GitHub Container Registry
-docker pull ghcr.io/your-username/pg_ical:latest
+docker pull ghcr.io/your-username/pg_rrule:latest
 
 # Run
 docker run --rm \
   -e POSTGRES_PASSWORD=postgres \
   -p 5432:5432 \
-  ghcr.io/your-username/pg_ical:latest
+  ghcr.io/your-username/pg_rrule:latest
 
 # Connect and use
 psql -h localhost -U postgres -d postgres
-CREATE EXTENSION pg_ical;
+CREATE EXTENSION pg_rrule;
 ```
 
 ## Docker Compose

@@ -1,6 +1,6 @@
-# Using pg_ical Extension in Your Own Docker Projects
+# Using pg_rrule Extension in Your Own Docker Projects
 
-This guide shows how to use the pg_ical PostgreSQL extension in your own Docker projects.
+This guide shows how to use the pg_rrule PostgreSQL extension in your own Docker projects.
 
 ## Option 1: Use Pre-built Image from GitHub Container Registry
 
@@ -10,17 +10,17 @@ The easiest way is to use the published Docker image:
 
 ```bash
 # Pull the latest image
-docker pull ghcr.io/jakobjanot/pg_ical:latest
+docker pull ghcr.io/jakobjanot/pg_rrule:latest
 
-# Run PostgreSQL with pg_ical installed
+# Run PostgreSQL with pg_rrule installed
 docker run -d \
   --name postgres-ical \
   -e POSTGRES_PASSWORD=mysecretpassword \
   -p 5432:5432 \
-  ghcr.io/jakobjanot/pg_ical:latest
+  ghcr.io/jakobjanot/pg_rrule:latest
 
 # Connect and test
-docker exec -it postgres-ical psql -U postgres -c "CREATE EXTENSION pg_ical; SELECT rrule_is_valid('FREQ=DAILY');"
+docker exec -it postgres-ical psql -U postgres -c "CREATE EXTENSION pg_rrule; SELECT rrule_is_valid('FREQ=DAILY');"
 ```
 
 ### Use in docker-compose.yml
@@ -30,7 +30,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: ghcr.io/jakobjanot/pg_ical:latest
+    image: ghcr.io/jakobjanot/pg_rrule:latest
     environment:
       POSTGRES_DB: myapp
       POSTGRES_USER: myuser
@@ -58,7 +58,7 @@ Create `init.sql` to automatically set up the extension:
 
 ```sql
 -- init.sql
-CREATE EXTENSION IF NOT EXISTS pg_ical;
+CREATE EXTENSION IF NOT EXISTS pg_rrule;
 
 -- Create your tables
 CREATE TABLE events (
@@ -93,10 +93,10 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Clone and build pg_ical
-WORKDIR /tmp/pg_ical
-RUN git clone https://github.com/jakobjanot/pg_ical.git . && \
-    ln -sf sql/pg_ical.control pg_ical.control && \
+# Clone and build pg_rrule
+WORKDIR /tmp/pg_rrule
+RUN git clone https://github.com/jakobjanot/pg_rrule.git . && \
+    ln -sf sql/pg_rrule.control pg_rrule.control && \
     make && \
     make install
 
@@ -104,8 +104,8 @@ RUN git clone https://github.com/jakobjanot/pg_ical.git . && \
 FROM postgres:16
 
 # Copy only the built extension
-COPY --from=builder /usr/share/postgresql/16/extension/pg_ical* /usr/share/postgresql/16/extension/
-COPY --from=builder /usr/lib/postgresql/16/lib/pg_ical.so /usr/lib/postgresql/16/lib/
+COPY --from=builder /usr/share/postgresql/16/extension/pg_rrule* /usr/share/postgresql/16/extension/
+COPY --from=builder /usr/lib/postgresql/16/lib/pg_rrule.so /usr/lib/postgresql/16/lib/
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y \
@@ -130,13 +130,13 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Build and install pg_ical
-WORKDIR /tmp/pg_ical
-RUN git clone https://github.com/jakobjanot/pg_ical.git . && \
-    ln -sf sql/pg_ical.control pg_ical.control && \
+# Build and install pg_rrule
+WORKDIR /tmp/pg_rrule
+RUN git clone https://github.com/jakobjanot/pg_rrule.git . && \
+    ln -sf sql/pg_rrule.control pg_rrule.control && \
     make && \
     make install && \
-    cd / && rm -rf /tmp/pg_ical
+    cd / && rm -rf /tmp/pg_rrule
 
 # Clean up build dependencies (optional, saves space)
 RUN apt-get remove -y build-essential postgresql-server-dev-16 pkg-config git && \
@@ -176,9 +176,9 @@ services:
       - "5432:5432"
     volumes:
       # Mount the built extension files
-      - ./pg_ical.so:/usr/lib/postgresql/16/lib/pg_ical.so
-      - ./sql/pg_ical--1.0.0.sql:/usr/share/postgresql/16/extension/pg_ical--1.0.0.sql
-      - ./sql/pg_ical.control:/usr/share/postgresql/16/extension/pg_ical.control
+      - ./pg_rrule.so:/usr/lib/postgresql/16/lib/pg_rrule.so
+      - ./sql/pg_rrule--1.0.0.sql:/usr/share/postgresql/16/extension/pg_rrule--1.0.0.sql
+      - ./sql/pg_rrule.control:/usr/share/postgresql/16/extension/pg_rrule.control
       - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
 ```
 
@@ -186,7 +186,7 @@ First, build the extension locally:
 
 ```bash
 # On your host machine
-cd /path/to/pg_ical
+cd /path/to/pg_rrule
 make clean && make
 ```
 
@@ -200,7 +200,7 @@ Create `test-examples.sql`:
 
 ```sql
 -- Enable extension
-CREATE EXTENSION IF NOT EXISTS pg_ical;
+CREATE EXTENSION IF NOT EXISTS pg_rrule;
 
 -- Test 1: Validation
 \echo '=== Test 1: RRULE Validation ==='
@@ -298,7 +298,7 @@ docker exec -i postgres-ical psql -U postgres < test-examples.sql
 docker exec -it postgres-ical psql -U postgres
 
 # Then run SQL interactively
-postgres=# CREATE EXTENSION pg_ical;
+postgres=# CREATE EXTENSION pg_rrule;
 postgres=# 
 postgres=# -- Test next occurrence
 postgres=# SELECT rrule_next_occurrence(
@@ -330,7 +330,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: ghcr.io/jakobjanot/pg_ical:latest
+    image: ghcr.io/jakobjanot/pg_rrule:latest
     environment:
       POSTGRES_DB: calendar
       POSTGRES_USER: caluser
@@ -386,7 +386,7 @@ psycopg2-binary==2.9.9
 ### init.sql
 
 ```sql
-CREATE EXTENSION IF NOT EXISTS pg_ical;
+CREATE EXTENSION IF NOT EXISTS pg_rrule;
 
 CREATE TABLE events (
     id SERIAL PRIMARY KEY,
@@ -571,16 +571,16 @@ func main() {
 
 ```bash
 # Check if extension files are in the right place
-docker exec postgres-ical ls -la /usr/share/postgresql/16/extension/pg_ical*
-docker exec postgres-ical ls -la /usr/lib/postgresql/16/lib/pg_ical.so
+docker exec postgres-ical ls -la /usr/share/postgresql/16/extension/pg_rrule*
+docker exec postgres-ical ls -la /usr/lib/postgresql/16/lib/pg_rrule.so
 ```
 
 ### Permission denied
 
 ```bash
 # Ensure PostgreSQL has read permissions
-docker exec postgres-ical chmod 644 /usr/share/postgresql/16/extension/pg_ical*
-docker exec postgres-ical chmod 755 /usr/lib/postgresql/16/lib/pg_ical.so
+docker exec postgres-ical chmod 644 /usr/share/postgresql/16/extension/pg_rrule*
+docker exec postgres-ical chmod 755 /usr/lib/postgresql/16/lib/pg_rrule.so
 ```
 
 ### libical not found
@@ -594,7 +594,7 @@ RUN apt-get update && apt-get install -y libical3
 
 1. **Use specific version tags** instead of `:latest`
    ```yaml
-   image: ghcr.io/jakobjanot/pg_ical:v1.0.0
+   image: ghcr.io/jakobjanot/pg_rrule:v1.0.0
    ```
 
 2. **Persist data with volumes**

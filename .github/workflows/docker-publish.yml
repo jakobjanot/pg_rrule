@@ -65,15 +65,15 @@ jobs:
           docker run --rm \
             -e POSTGRES_PASSWORD=postgres \
             -e POSTGRES_DB=testdb \
-            --name pg_ical_test \
+            --name pg_rrule_test \
             -d ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
           
           # Wait for PostgreSQL to start
           sleep 10
           
           # Run basic test
-          docker exec pg_ical_test psql -U postgres -d testdb -c "CREATE EXTENSION pg_ical;"
-          docker exec pg_ical_test psql -U postgres -d testdb -c "SELECT rrule_is_valid('FREQ=DAILY');"
+          docker exec pg_rrule_test psql -U postgres -d testdb -c "CREATE EXTENSION pg_rrule;"
+          docker exec pg_rrule_test psql -U postgres -d testdb -c "SELECT rrule_is_valid('FREQ=DAILY');"
           
           # Cleanup
-          docker stop pg_ical_test
+          docker stop pg_rrule_test

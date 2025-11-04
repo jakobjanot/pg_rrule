@@ -1,7 +1,7 @@
-EXTENSION = pg_ical
-DATA = sql/pg_ical--1.0.0.sql
-MODULE_big = pg_ical
-OBJS = src/pg_ical.o
+EXTENSION = pg_rrule
+DATA = sql/pg_rrule--1.0.0.sql
+MODULE_big = pg_rrule
+OBJS = src/pg_rrule.o
 
 # PGXS expects control file in root - symlink handled externally
 # Don't clean it

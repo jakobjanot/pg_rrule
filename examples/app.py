@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Calendar Application Demo using pg_ical PostgreSQL Extension
+Calendar Application Demo using pg_rrule PostgreSQL Extension
 
-This demonstrates how to use the pg_ical extension to manage recurring events.
+This demonstrates how to use the pg_rrule extension to manage recurring events.
 """
 
 import psycopg2
@@ -19,17 +19,17 @@ def main():
     cur = conn.cursor()
     
     print("\n" + "=" * 70)
-    print("🗓️  Calendar Application - pg_ical Demo")
+    print("🗓️  Calendar Application - pg_rrule Demo")
     print("=" * 70)
     
     # Test 1: Verify extension is loaded
-    print("\n✅ Verifying pg_ical extension...")
-    cur.execute("SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_ical'")
+    print("\n✅ Verifying pg_rrule extension...")
+    cur.execute("SELECT extname, extversion FROM pg_extension WHERE extname = 'pg_rrule'")
     result = cur.fetchone()
     if result:
         print(f"   Extension '{result[0]}' version {result[1]} is installed")
     else:
-        print("   ❌ Extension not found! Please install pg_ical.")
+        print("   ❌ Extension not found! Please install pg_rrule.")
         return
     
     # Test 2: List all events

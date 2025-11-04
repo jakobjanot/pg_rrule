@@ -1,27 +1,27 @@
-# pg_ical Examples
+# pg_rrule Examples
 
-This directory contains working examples demonstrating how to use the pg_ical PostgreSQL extension in Docker-based applications.
+This directory contains working examples demonstrating how to use the pg_rrule PostgreSQL extension in Docker-based applications.
 
 ## Quick Start
 
-The simplest way to test pg_ical:
+The simplest way to test pg_rrule:
 
 ```bash
 cd examples
 
-# Start PostgreSQL with pg_ical and run demo app
+# Start PostgreSQL with pg_rrule and run demo app
 docker-compose up
 
-# You should see output demonstrating all pg_ical functions
+# You should see output demonstrating all pg_rrule functions
 ```
 
 ## What's Included
 
 ### Files
 
-- **`docker-compose.yml`** - Complete setup with PostgreSQL + pg_ical and Python demo app
+- **`docker-compose.yml`** - Complete setup with PostgreSQL + pg_rrule and Python demo app
 - **`init.sql`** - Automatic database initialization with sample events
-- **`app.py`** - Python demo application showing all pg_ical functions
+- **`app.py`** - Python demo application showing all pg_rrule functions
 - **`Dockerfile`** - Python application container
 - **`requirements.txt`** - Python dependencies
 
@@ -47,7 +47,7 @@ docker-compose up
 ```
 
 This will:
-1. Start PostgreSQL with pg_ical extension
+1. Start PostgreSQL with pg_rrule extension
 2. Create database and load sample events
 3. Run the Python demo showing all features
 4. Display comprehensive output demonstrating each function
@@ -140,7 +140,7 @@ WHERE title = 'Daily Standup';
 ```yaml
 services:
   postgres:
-    image: ghcr.io/jakobjanot/pg_ical:latest
+    image: ghcr.io/jakobjanot/pg_rrule:latest
     environment:
       POSTGRES_DB: myapp
       POSTGRES_USER: myuser
@@ -193,7 +193,7 @@ docker-compose logs postgres
 **Extension not found:**
 ```bash
 # Verify extension is installed
-docker-compose exec postgres psql -U caluser -d calendar -c "SELECT * FROM pg_extension WHERE extname = 'pg_ical';"
+docker-compose exec postgres psql -U caluser -d calendar -c "SELECT * FROM pg_extension WHERE extname = 'pg_rrule';"
 ```
 
 ## Next Steps

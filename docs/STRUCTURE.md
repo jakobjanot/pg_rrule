@@ -1,16 +1,16 @@
 # Project Structure
 
-This document describes the organization of the pg_ical PostgreSQL extension.
+This document describes the organization of the pg_rrule PostgreSQL extension.
 
 ## Directory Layout
 
 ```
-pg_ical/
+pg_rrule/
 ├── src/                    # C source code
-│   └── pg_ical.c          # Main extension implementation
+│   └── pg_rrule.c          # Main extension implementation
 ├── sql/                    # SQL interface definitions
-│   ├── pg_ical--1.0.0.sql # Extension SQL functions and types
-│   └── pg_ical.control    # Extension metadata
+│   ├── pg_rrule--1.0.0.sql # Extension SQL functions and types
+│   └── pg_rrule.control    # Extension metadata
 ├── tests/                  # Test files
 │   └── test.sql           # Comprehensive test suite
 ├── docker/                 # Docker configuration
@@ -27,21 +27,21 @@ pg_ical/
 ├── Makefile               # Native build configuration (PGXS)
 ├── Makefile.docker        # Docker convenience commands
 ├── README.md              # User documentation
-└── pg_ical.control        # Symlink to sql/pg_ical.control (build requirement)
+└── pg_rrule.control        # Symlink to sql/pg_rrule.control (build requirement)
 ```
 
 ## File Purposes
 
 ### Source Code (`src/`)
-- **pg_ical.c**: Complete C implementation of the extension
+- **pg_rrule.c**: Complete C implementation of the extension
   - RRULE type I/O functions
   - Set-returning functions for occurrence calculation
   - libical integration
   - PostgreSQL timestamp conversion utilities
 
 ### SQL Interface (`sql/`)
-- **pg_ical--1.0.0.sql**: SQL DDL for creating extension functions and types
-- **pg_ical.control**: PostgreSQL extension metadata (version, dependencies)
+- **pg_rrule--1.0.0.sql**: SQL DDL for creating extension functions and types
+- **pg_rrule.control**: PostgreSQL extension metadata (version, dependencies)
 
 ### Tests (`tests/`)
 - **test.sql**: Comprehensive manual test suite covering:
@@ -62,12 +62,12 @@ pg_ical/
 - **Makefile**: PGXS-based native build configuration
   - Discovers PostgreSQL paths via `pg_config`
   - Links libical via `pkg-config`
-  - Source path: `OBJS = src/pg_ical.o`
-  - SQL path: `DATA = sql/pg_ical--1.0.0.sql`
+  - Source path: `OBJS = src/pg_rrule.o`
+  - SQL path: `DATA = sql/pg_rrule--1.0.0.sql`
 - **Makefile.docker**: Convenience wrapper for Docker commands
-- **pg_ical.control**: Symlink to `sql/pg_ical.control`
+- **pg_rrule.control**: Symlink to `sql/pg_rrule.control`
   - Required by PGXS (expects `$(EXTENSION).control` in root)
-  - Created with: `ln -sf sql/pg_ical.control pg_ical.control`
+  - Created with: `ln -sf sql/pg_rrule.control pg_rrule.control`
   - Excluded from version control (`.gitignore`)
 
 ## Build Requirements
@@ -76,7 +76,7 @@ pg_ical/
 PostgreSQL's PGXS build system expects the control file to be named `$(EXTENSION).control` in the project root directory. Since we organize SQL files in the `sql/` subdirectory, we maintain a symlink:
 
 ```bash
-ln -sf sql/pg_ical.control pg_ical.control
+ln -sf sql/pg_rrule.control pg_rrule.control
 ```
 
 This symlink is:
@@ -87,8 +87,8 @@ This symlink is:
 
 ### Path Configuration in Makefile
 ```makefile
-OBJS = src/pg_ical.o          # C source location
-DATA = sql/pg_ical--1.0.0.sql # SQL script location
+OBJS = src/pg_rrule.o          # C source location
+DATA = sql/pg_rrule--1.0.0.sql # SQL script location
 ```
 
 ## Development Workflow
@@ -102,7 +102,7 @@ make -f Makefile.docker docker-shell  # Interactive shell
 
 ### Native Build
 ```bash
-ln -sf sql/pg_ical.control pg_ical.control  # Create symlink (first time only)
+ln -sf sql/pg_rrule.control pg_rrule.control  # Create symlink (first time only)
 make                                         # Compile
 sudo make install                            # Install to PostgreSQL
 psql -d mydb < tests/test.sql               # Run tests

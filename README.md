@@ -1,4 +1,4 @@
-# pg_ical - PostgreSQL iCalendar RRULE Extension
+# pg_rrule - PostgreSQL iCalendar RRULE Extension
 
 A PostgreSQL extension that provides support for iCalendar recurrence rules (RRULE) using libical.
 
@@ -17,7 +17,7 @@ A PostgreSQL extension that provides support for iCalendar recurrence rules (RRU
 
 ## Quick Start with Docker
 
-The fastest way to try pg_ical:
+The fastest way to try pg_rrule:
 
 ```bash
 # Run the example application
@@ -28,7 +28,7 @@ docker-compose up
 docker run -d \
   -e POSTGRES_PASSWORD=mysecretpassword \
   -p 5432:5432 \
-  ghcr.io/jakobjanot/pg_ical:latest
+  ghcr.io/jakobjanot/pg_rrule:latest
 ```
 
 See [examples/README.md](examples/README.md) for a complete working demo, or [docs/USAGE_IN_DOCKER.md](docs/USAGE_IN_DOCKER.md) for integration guide.
@@ -41,7 +41,7 @@ The easiest way to get started is using Docker:
 
 ```bash
 # Pull from GitHub Container Registry
-docker pull ghcr.io/jakobjanot/pg_ical:latest
+docker pull ghcr.io/jakobjanot/pg_rrule:latest
 
 # Or use docker-compose for development
 make -f Makefile.docker docker-dev    # Start dev environment
@@ -73,20 +73,20 @@ sudo yum install postgresql-devel libical-devel
 
 ```bash
 # Create required symlink (PGXS requirement - do this once)
-ln -sf sql/pg_ical.control pg_ical.control
+ln -sf sql/pg_rrule.control pg_rrule.control
 
 # Build and install
 make
 sudo make install
 ```
 
-**Note**: The symlink `pg_ical.control → sql/pg_ical.control` is required because PostgreSQL's build system (PGXS) expects the control file in the project root. This symlink is excluded from version control.
+**Note**: The symlink `pg_rrule.control → sql/pg_rrule.control` is required because PostgreSQL's build system (PGXS) expects the control file in the project root. This symlink is excluded from version control.
 
 ### Enable Extension
 
 Connect to your database and run:
 ```sql
-CREATE EXTENSION pg_ical;
+CREATE EXTENSION pg_rrule;
 ```
 
 ## Usage
@@ -233,7 +233,7 @@ Validates an RRULE string without creating an rrule type.
 ## Uninstallation
 
 ```sql
-DROP EXTENSION pg_ical CASCADE;
+DROP EXTENSION pg_rrule CASCADE;
 ```
 
 ## License

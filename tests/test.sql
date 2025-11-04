@@ -1,8 +1,8 @@
--- Test script for pg_ical extension
+-- Test script for pg_rrule extension
 -- Run with: psql -d your_database -f test.sql
 
 -- Create extension
-CREATE EXTENSION IF NOT EXISTS pg_ical;
+CREATE EXTENSION IF NOT EXISTS pg_rrule;
 
 -- Create test table
 DROP TABLE IF EXISTS events CASCADE;
@@ -83,4 +83,4 @@ WHERE title = 'Monthly review';
 
 -- Cleanup (commented out by default)
 -- DROP TABLE events;
--- DROP EXTENSION pg_ical;
+-- DROP EXTENSION pg_rrule;

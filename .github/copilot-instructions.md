@@ -1,4 +1,4 @@
-# pg_ical - PostgreSQL Extension Development Guide
+# pg_rrule - PostgreSQL Extension Development Guide
 
 ## Project Overview
 
@@ -35,7 +35,7 @@ sudo make install       # Install to PostgreSQL extensions directory
 make -f Makefile.docker docker-test
 
 # Native PostgreSQL:
-CREATE EXTENSION pg_ical;
+CREATE EXTENSION pg_rrule;
 \i test.sql             # Run comprehensive test suite
 ```
 
@@ -81,10 +81,10 @@ PostgreSQL timestamps ↔ libical times via helper functions:
 
 ## File Structure & Purpose
 
-- **`src/pg_ical.c`**: All C implementation (type I/O, SRF functions, libical integration)
-- **`sql/pg_ical--1.0.0.sql`**: SQL interface definitions (CREATE TYPE, CREATE FUNCTION)
-- **`sql/pg_ical.control`**: Extension metadata for PostgreSQL
-- **`pg_ical.control`**: Symlink to `sql/pg_ical.control` (required by PGXS - see note below)
+- **`src/pg_rrule.c`**: All C implementation (type I/O, SRF functions, libical integration)
+- **`sql/pg_rrule--1.0.0.sql`**: SQL interface definitions (CREATE TYPE, CREATE FUNCTION)
+- **`sql/pg_rrule.control`**: Extension metadata for PostgreSQL
+- **`pg_rrule.control`**: Symlink to `sql/pg_rrule.control` (required by PGXS - see note below)
 - **`Makefile`**: PGXS-based build configuration
 - **`Makefile.docker`**: Docker-based development/testing commands
 - **`docker/Dockerfile`**: Multi-stage production build for distribution
@@ -97,7 +97,7 @@ PostgreSQL timestamps ↔ libical times via helper functions:
 ### PGXS Control File Requirement
 PGXS expects the control file to be `$(EXTENSION).control` in the project root. We maintain a symlink:
 ```bash
-ln -sf sql/pg_ical.control pg_ical.control
+ln -sf sql/pg_rrule.control pg_rrule.control
 ```
 - Created automatically in Docker builds
 - Must be created manually for native builds
@@ -118,8 +118,8 @@ icalrecur_iterator_free(ritr);  // MUST free iterator
 ```
 
 ### PostgreSQL Extension Lifecycle
-1. Extension installed via `CREATE EXTENSION pg_ical` (loads from `pg_ical--1.0.0.sql`)
-2. Shared library loaded from `$libdir/pg_ical.so` (see `module_pathname` in `.control`)
+1. Extension installed via `CREATE EXTENSION pg_rrule` (loads from `pg_rrule--1.0.0.sql`)
+2. Shared library loaded from `$libdir/pg_rrule.so` (see `module_pathname` in `.control`)
 3. `PG_MODULE_MAGIC` macro validates PostgreSQL version compatibility
 
 ## Common Gotchas

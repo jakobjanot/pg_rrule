@@ -1,13 +1,13 @@
-# pg_ical Function Examples
+# pg_rrule Function Examples
 
-This guide provides practical examples of using pg_ical functions to work with recurring events.
+This guide provides practical examples of using pg_rrule functions to work with recurring events.
 
 ## Quick Start
 
 First, enable the extension in your database:
 
 ```sql
-CREATE EXTENSION pg_ical;
+CREATE EXTENSION pg_rrule;
 ```
 
 ## The RRULE Type
@@ -25,7 +25,7 @@ SELECT 'INVALID_RULE'::rrule;
 
 ## Core Functions Overview
 
-pg_ical provides 4 main functions:
+pg_rrule provides 4 main functions:
 
 1. **`rrule_is_valid(text)`** - Validate an RRULE string
 2. **`rrule_next_occurrence(rrule, after, dtstart)`** - Get the next single occurrence
