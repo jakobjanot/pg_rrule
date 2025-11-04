@@ -93,8 +93,8 @@ jobs:
           done
           
           # Run tests
-          echo "Creating extension..."
-          docker exec pg_rrule_test psql -U postgres -d testdb -c "CREATE EXTENSION pg_rrule;"
+          echo "Creating extension (idempotent)..."
+          docker exec pg_rrule_test psql -U postgres -d testdb -c "CREATE EXTENSION IF NOT EXISTS pg_rrule;"
           
           echo "Testing rrule_is_valid..."
           docker exec pg_rrule_test psql -U postgres -d testdb -tAc "SELECT rrule_is_valid('FREQ=DAILY');" | grep -q "t"
