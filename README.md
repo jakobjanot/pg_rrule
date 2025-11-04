@@ -54,9 +54,15 @@ sudo yum install postgresql-devel libical-devel
 #### Build and Install Extension
 
 ```bash
+# Create required symlink (PGXS requirement - do this once)
+ln -sf sql/pg_ical.control pg_ical.control
+
+# Build and install
 make
 sudo make install
 ```
+
+**Note**: The symlink `pg_ical.control → sql/pg_ical.control` is required because PostgreSQL's build system (PGXS) expects the control file in the project root. This symlink is excluded from version control.
 
 ### Enable Extension
 
@@ -66,6 +72,8 @@ CREATE EXTENSION pg_ical;
 ```
 
 ## Usage
+
+**For detailed examples and usage patterns, see [docs/EXAMPLES.md](docs/EXAMPLES.md)**
 
 ### Creating Tables with RRULE
 
