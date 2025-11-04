@@ -11,12 +11,82 @@ on:
         required: true
 
 jobs:
-  create-release:
-    name: Create GitHub Release
+  build-linux:
+    name: Build Linux (${{ matrix.arch }})
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      packages: write
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner_arch: amd64
+          - arch: aarch64
+            runner_arch: arm64
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "TAG=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Set up QEMU
+        if: matrix.arch == 'aarch64'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      
+      - name: Build in Docker container
+        run: |
+          docker run --rm --platform linux/${{ matrix.runner_arch }} \
+            -v $PWD:/workspace \
+            -w /workspace \
+            postgres:16 bash -c "
+              apt-get update && apt-get install -y \
+                build-essential \
+                postgresql-server-dev-16 \
+                libical-dev \
+                pkg-config
+              ln -sf sql/pg_rrule.control pg_rrule.control
+              make with_llvm=no
+            "
+      
+      - name: Create binary artifact
+        run: |
+          mkdir -p release/pg_rrule-${{ steps.version.outputs.VERSION }}
+          cp pg_rrule.so release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          cp sql/pg_rrule.control release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          cp sql/pg_rrule--1.0.0.sql release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          cp README.md release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          cp Makefile release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          
+          cd release
+          tar -czf pg_rrule-${{ steps.version.outputs.VERSION }}-linux-${{ matrix.arch }}.tar.gz pg_rrule-${{ steps.version.outputs.VERSION }}
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: release/pg_rrule-${{ steps.version.outputs.VERSION }}-linux-${{ matrix.arch }}.tar.gz
+          retention-days: 1
+  
+  build-macos:
+    name: Build macOS (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: macos-13  # Intel
+          - arch: arm64
+            runner: macos-14  # Apple Silicon
     
     steps:
       - name: Checkout code
@@ -35,21 +105,13 @@ jobs:
       
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            postgresql-server-dev-16 \
-            libical-dev \
-            pkg-config
+          brew install postgresql@16 libical pkg-config
+          echo "$(brew --prefix postgresql@16)/bin" >> $GITHUB_PATH
       
       - name: Build extension
         run: |
           ln -sf sql/pg_rrule.control pg_rrule.control
-          make clean
-          ln -sf sql/pg_rrule.control pg_rrule.control
-          ls -la pg_rrule.control
-          ls -la sql/pg_rrule.control
-          make with_llvm=no
+          make
       
       - name: Create binary artifact
         run: |
@@ -61,23 +123,44 @@ jobs:
           cp Makefile release/pg_rrule-${{ steps.version.outputs.VERSION }}/
           
           cd release
-          tar -czf pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz pg_rrule-${{ steps.version.outputs.VERSION }}
+          tar -czf pg_rrule-${{ steps.version.outputs.VERSION }}-macos-${{ matrix.arch }}.tar.gz pg_rrule-${{ steps.version.outputs.VERSION }}
       
-      - name: Create source artifact
-        run: |
-          cd release
-          git archive --format=tar.gz --prefix=pg_rrule-${{ steps.version.outputs.VERSION }}/ HEAD > pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: release/pg_rrule-${{ steps.version.outputs.VERSION }}-macos-${{ matrix.arch }}.tar.gz
+          retention-days: 1
+  
+  build-docker:
+    name: Build Multi-arch Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: Generate checksums
+      - name: Set version
+        id: version
         run: |
-          cd release
-          sha256sum pg_rrule-*.tar.gz > checksums.txt
-          cat checksums.txt
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "TAG=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
       
-      - name: Build Docker image
-        run: |
-          docker build -t ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }} -f docker/Dockerfile .
-          docker tag ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }} ghcr.io/${{ github.repository }}:latest
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -86,40 +169,107 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Push Docker images
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+  
+  create-release:
+    name: Create GitHub Release
+    needs: [build-linux, build-macos, build-docker]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set version
+        id: version
         run: |
-          docker push ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
-          docker push ghcr.io/${{ github.repository }}:latest
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "TAG=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Prepare release directory
+        run: |
+          mkdir -p release
+          find artifacts -name "*.tar.gz" -exec cp {} release/ \;
+          ls -lh release/
+      
+      - name: Create source artifact
+        run: |
+          git archive --format=tar.gz --prefix=pg_rrule-${{ steps.version.outputs.VERSION }}/ HEAD > release/pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
+      
+      - name: Generate checksums
+        run: |
+          cd release
+          sha256sum pg_rrule-*.tar.gz > checksums.txt
+          cat checksums.txt
       
       - name: Generate release notes
-        id: release_notes
         run: |
           cat > release_notes.md << 'EOF'
           ## What's New in ${{ steps.version.outputs.TAG }}
           
           ### Installation
           
-          #### Docker (Recommended)
+          #### Docker (Recommended - Multi-arch)
+          Supports both `amd64` and `arm64` architectures:
           ```bash
           docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
           ```
           
           #### From Binary
+          
+          Download the appropriate binary for your platform:
+          
+          **Linux:**
+          - `pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz` - Intel/AMD 64-bit
+          - `pg_rrule-${{ steps.version.outputs.VERSION }}-linux-aarch64.tar.gz` - ARM 64-bit
+          
+          **macOS:**
+          - `pg_rrule-${{ steps.version.outputs.VERSION }}-macos-x86_64.tar.gz` - Intel Macs
+          - `pg_rrule-${{ steps.version.outputs.VERSION }}-macos-arm64.tar.gz` - Apple Silicon (M1/M2/M3)
+          
           ```bash
-          # Download and extract
+          # Example: Linux x86_64
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.TAG }}/pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
           tar -xzf pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
           cd pg_rrule-${{ steps.version.outputs.VERSION }}
           
-          # Install (requires PostgreSQL 12-16)
+          # Linux: Install to PostgreSQL directory
           sudo cp pg_rrule.so /usr/lib/postgresql/16/lib/
           sudo cp pg_rrule.control /usr/share/postgresql/16/extension/
           sudo cp pg_rrule--1.0.0.sql /usr/share/postgresql/16/extension/
+          
+          # macOS: Use pg_config to find the right paths
+          sudo cp pg_rrule.so $(pg_config --pkglibdir)/
+          sudo cp pg_rrule.control $(pg_config --sharedir)/extension/
+          sudo cp pg_rrule--1.0.0.sql $(pg_config --sharedir)/extension/
           ```
           
           #### From Source
+          Works on any platform with PostgreSQL development tools:
           ```bash
-          # Download source
           wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.TAG }}/pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
           tar -xzf pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
           cd pg_rrule-${{ steps.version.outputs.VERSION }}
@@ -134,16 +284,19 @@ jobs:
           After installation:
           ```sql
           CREATE EXTENSION pg_rrule;
-          SELECT rrule_is_valid('FREQ=DAILY');
+          SELECT rrule_is_valid('FREQ=DAILY;COUNT=5');
           ```
           
-          ### Checksums
-          See `checksums.txt` in assets for SHA256 checksums.
-          EOF
+          ### Platform Support
+          - ✅ Linux x86_64 (Intel/AMD)
+          - ✅ Linux ARM64 (aarch64)
+          - ✅ macOS x86_64 (Intel)
+          - ✅ macOS ARM64 (Apple Silicon M1/M2/M3)
+          - ✅ Docker (multi-arch: amd64, arm64)
           
-          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
-          cat release_notes.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          ### Checksums
+          See `checksums.txt` for SHA256 verification of all binaries.
+          EOF
       
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -154,8 +307,7 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            release/pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
-            release/pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz
+            release/*.tar.gz
             release/checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -166,10 +318,17 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ Release ${{ steps.version.outputs.TAG }} created successfully!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- Binary: pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz" >> $GITHUB_STEP_SUMMARY
-          echo "- Source: pg_rrule-${{ steps.version.outputs.VERSION }}-source.tar.gz" >> $GITHUB_STEP_SUMMARY
-          echo "- Docker: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "### Platform Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "**Linux:**" >> $GITHUB_STEP_SUMMARY
+          echo "- x86_64 (Intel/AMD)" >> $GITHUB_STEP_SUMMARY
+          echo "- aarch64 (ARM)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**macOS:**" >> $GITHUB_STEP_SUMMARY
+          echo "- x86_64 (Intel)" >> $GITHUB_STEP_SUMMARY
+          echo "- arm64 (Apple Silicon)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Multi-arch (linux/amd64, linux/arm64)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Links" >> $GITHUB_STEP_SUMMARY
           echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.TAG }})" >> $GITHUB_STEP_SUMMARY
