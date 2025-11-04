@@ -49,7 +49,7 @@ jobs:
           ln -sf sql/pg_rrule.control pg_rrule.control
           ls -la pg_rrule.control
           ls -la sql/pg_rrule.control
-          make
+          make with_llvm=no
       
       - name: Create binary artifact
         run: |
