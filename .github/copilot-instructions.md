@@ -81,16 +81,28 @@ PostgreSQL timestamps ↔ libical times via helper functions:
 
 ## File Structure & Purpose
 
-- **`pg_ical.c`**: All C implementation (type I/O, SRF functions, libical integration)
-- **`pg_ical--1.0.0.sql`**: SQL interface definitions (CREATE TYPE, CREATE FUNCTION)
-- **`pg_ical.control`**: Extension metadata for PostgreSQL
+- **`src/pg_ical.c`**: All C implementation (type I/O, SRF functions, libical integration)
+- **`sql/pg_ical--1.0.0.sql`**: SQL interface definitions (CREATE TYPE, CREATE FUNCTION)
+- **`sql/pg_ical.control`**: Extension metadata for PostgreSQL
+- **`pg_ical.control`**: Symlink to `sql/pg_ical.control` (required by PGXS - see note below)
 - **`Makefile`**: PGXS-based build configuration
 - **`Makefile.docker`**: Docker-based development/testing commands
-- **`Dockerfile`**: Multi-stage production build for distribution
-- **`Dockerfile.dev`**: Development environment with mounted source
-- **`docker-compose.yml`**: Dev and production service definitions
-- **`test.sql`**: Manual test suite demonstrating all functions
-- **`DOCKER.md`**: Complete Docker usage guide
+- **`docker/Dockerfile`**: Multi-stage production build for distribution
+- **`docker/Dockerfile.dev`**: Development environment with mounted source
+- **`docker/docker-compose.yml`**: Dev and production service definitions
+- **`tests/test.sql`**: Manual test suite demonstrating all functions
+- **`docs/DOCKER.md`**: Complete Docker usage guide
+- **`docs/STRUCTURE.md`**: Project organization reference
+
+### PGXS Control File Requirement
+PGXS expects the control file to be `$(EXTENSION).control` in the project root. We maintain a symlink:
+```bash
+ln -sf sql/pg_ical.control pg_ical.control
+```
+- Created automatically in Docker builds
+- Must be created manually for native builds
+- Excluded from Git (`.gitignore`)
+- Protected from `make clean` via `EXTRA_CLEAN =` in Makefile
 
 ## Key Integration Points
 

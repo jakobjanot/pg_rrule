@@ -11,7 +11,9 @@ RUN apt-get update && apt-get install -y \
 
 # Copy source files
 WORKDIR /build
-COPY Makefile pg_ical.c pg_ical.control pg_ical--1.0.0.sql ./
+COPY Makefile ./
+COPY src/ ./src/
+COPY sql/ ./sql/
 
 # Build extension
 RUN make
@@ -26,11 +28,11 @@ RUN apt-get update && apt-get install -y \
 
 # Copy built extension from builder
 COPY --from=builder /build/pg_ical.so /usr/lib/postgresql/16/lib/
-COPY --from=builder /build/pg_ical.control /usr/share/postgresql/16/extension/
-COPY --from=builder /build/pg_ical--1.0.0.sql /usr/share/postgresql/16/extension/
+COPY --from=builder /build/sql/pg_ical.control /usr/share/postgresql/16/extension/
+COPY --from=builder /build/sql/pg_ical--1.0.0.sql /usr/share/postgresql/16/extension/
 
 # Copy test file for easy access
-COPY test.sql /docker-entrypoint-initdb.d/
+COPY tests/test.sql /docker-entrypoint-initdb.d/
 
 # Labels for GitHub Container Registry
 LABEL org.opencontainers.image.source=https://github.com/jakobjanot/pg_ical

@@ -5,11 +5,13 @@
 # Documentation
 README.md
 .github
+docs/
 
 # Build artifacts
 *.o
 *.so
 *.bc
+src/*.o
 
 # macOS
 .DS_Store
@@ -19,3 +21,7 @@ README.md
 .idea
 *.swp
 *.swo
+
+# Tests
+tests/test_simple
+tests/test_simple.c

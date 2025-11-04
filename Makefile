@@ -1,7 +1,11 @@
 EXTENSION = pg_ical
-DATA = pg_ical--1.0.0.sql
+DATA = sql/pg_ical--1.0.0.sql
 MODULE_big = pg_ical
-OBJS = pg_ical.o
+OBJS = src/pg_ical.o
+
+# PGXS expects control file in root - symlink handled externally
+# Don't clean it
+EXTRA_CLEAN =
 
 # libical flags
 PG_CPPFLAGS = $(shell pkg-config --cflags libical)

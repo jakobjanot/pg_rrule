@@ -3,8 +3,8 @@ services:
   # Development environment - mount source code for live development
   dev:
     build:
-      context: .
-      dockerfile: Dockerfile.dev
+      context: ..
+      dockerfile: docker/Dockerfile.dev
     container_name: pg_ical_dev
     environment:
       POSTGRES_PASSWORD: postgres
@@ -13,7 +13,7 @@ services:
       - "5432:5432"
     volumes:
       # Mount source code for development
-      - ./:/workspace
+      - ..:/workspace
       # Persist PostgreSQL data
       - pgdata:/var/lib/postgresql/data
     command: postgres
@@ -21,8 +21,8 @@ services:
   # Production-like image for testing the final build
   prod:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: pg_ical_prod
     environment:
       POSTGRES_PASSWORD: postgres

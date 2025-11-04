@@ -30,7 +30,7 @@ make -f Makefile.docker docker-dev    # Start dev environment
 make -f Makefile.docker docker-test   # Build and test
 ```
 
-See [DOCKER.md](DOCKER.md) for complete Docker setup and development guide.
+See [docs/DOCKER.md](docs/DOCKER.md) for complete Docker setup and development guide.
 
 ### Option 2: Native Installation
 

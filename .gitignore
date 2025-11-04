@@ -1,9 +1,20 @@
+# Build artifacts
 *.o
 *.so
 *.bc
 *.sql.in
+src/*.o
+
+# Symlinked control file (actual file is in sql/)
+pg_ical.control
+
+# Test results
 results/
 regression.diffs
 regression.out
 tmp_check/
 *.log
+tests/test_simple
+
+# macOS
+.DS_Store

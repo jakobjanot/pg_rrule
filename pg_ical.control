@@ -1,5 +1,1 @@
-# pg_ical extension
-comment = 'iCalendar recurrence rules (RRULE) support for PostgreSQL'
-default_version = '1.0.0'
-module_pathname = '$libdir/pg_ical'
-relocatable = true
+sql/pg_ical.control
