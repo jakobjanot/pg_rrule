@@ -113,8 +113,8 @@ jobs:
           ln -sf sql/pg_rrule.control pg_rrule.control
           # Set PKG_CONFIG_PATH for icu4c (keg-only) and build
           export PKG_CONFIG_PATH="$(brew --prefix icu4c)/lib/pkgconfig:$(brew --prefix libical)/lib/pkgconfig:$PKG_CONFIG_PATH"
-          # Pass flags directly to make since shell expansion happens at parse time
-          make PG_CPPFLAGS="$(pkg-config --cflags libical)" SHLIB_LINK="$(pkg-config --libs libical)"
+          # Pass flags directly to make, add -undefined dynamic_lookup for macOS
+          make PG_CPPFLAGS="$(pkg-config --cflags libical)" SHLIB_LINK="$(pkg-config --libs libical) -undefined dynamic_lookup"
       
       - name: Create binary artifact
         run: |
