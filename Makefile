@@ -3,9 +3,6 @@ DATA = sql/pg_rrule--1.0.0.sql
 MODULE_big = pg_rrule
 OBJS = src/pg_rrule.o
 
-# Don't build LLVM bitcode (JIT compilation) - requires clang
-NO_PGXS_BITCODE = 1
-
 # PGXS expects control file in root - symlink handled externally
 # Don't clean it
 EXTRA_CLEAN =
@@ -18,3 +15,7 @@ SHLIB_LINK = $(shell pkg-config --libs libical)
 PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
+
+# Disable LLVM bitcode generation (requires clang which may not be available)
+%.bc:
+	@echo "Skipping bitcode generation"
