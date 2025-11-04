@@ -47,6 +47,8 @@ jobs:
           ln -sf sql/pg_rrule.control pg_rrule.control
           make clean
           ln -sf sql/pg_rrule.control pg_rrule.control
+          ls -la pg_rrule.control
+          ls -la sql/pg_rrule.control
           make
       
       - name: Create binary artifact
