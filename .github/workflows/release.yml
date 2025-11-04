@@ -119,7 +119,12 @@ jobs:
       - name: Create binary artifact
         run: |
           mkdir -p release/pg_rrule-${{ steps.version.outputs.VERSION }}
-          cp pg_rrule.so release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          # macOS creates .dylib instead of .so
+          if [ -f pg_rrule.so ]; then
+            cp pg_rrule.so release/pg_rrule-${{ steps.version.outputs.VERSION }}/
+          elif [ -f pg_rrule.dylib ]; then
+            cp pg_rrule.dylib release/pg_rrule-${{ steps.version.outputs.VERSION }}/pg_rrule.so
+          fi
           cp sql/pg_rrule.control release/pg_rrule-${{ steps.version.outputs.VERSION }}/
           cp sql/pg_rrule--1.0.0.sql release/pg_rrule-${{ steps.version.outputs.VERSION }}/
           cp README.md release/pg_rrule-${{ steps.version.outputs.VERSION }}/
