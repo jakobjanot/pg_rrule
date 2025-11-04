@@ -45,6 +45,7 @@ jobs:
       - name: Create symlink for control file
         run: |
           ln -sf sql/pg_rrule.control pg_rrule.control
+          ls -la pg_rrule.control
       
       - name: Build extension
         run: |
