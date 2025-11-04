@@ -8,7 +8,18 @@ This is a **PostgreSQL C extension** that adds iCalendar RRULE (recurrence rule)
 
 ## Critical Build & Development Workflow
 
-### Building the Extension
+### Docker Workflow (Recommended)
+```bash
+make -f Makefile.docker docker-dev    # Start PostgreSQL + build environment
+make -f Makefile.docker docker-test   # Build extension and run tests
+make -f Makefile.docker docker-shell  # Interactive development shell
+```
+
+**Docker setup**: See `DOCKER.md` for complete guide. Two Dockerfiles:
+- `Dockerfile.dev` - Full development environment with source mounted as volume
+- `Dockerfile` - Multi-stage production build for distribution via GitHub Container Registry
+
+### Native Build (Alternative)
 ```bash
 make                    # Compile the extension (requires pg_config + libical)
 sudo make install       # Install to PostgreSQL extensions directory
@@ -20,12 +31,17 @@ sudo make install       # Install to PostgreSQL extensions directory
 
 ### Testing
 ```bash
-# In PostgreSQL:
+# Docker (recommended):
+make -f Makefile.docker docker-test
+
+# Native PostgreSQL:
 CREATE EXTENSION pg_ical;
 \i test.sql             # Run comprehensive test suite
 ```
 
 **No automated test harness** - testing is manual via `test.sql` which covers validation, occurrence generation, and edge cases (COUNT limits, date ranges).
+
+**CI/CD**: GitHub Actions workflow (`.github/workflows/docker-publish.yml`) builds and publishes Docker images to GitHub Container Registry on every push/tag.
 
 ### Dependencies
 - **libical 3.0+** (external C library for RFC 5545 parsing)
@@ -69,7 +85,12 @@ PostgreSQL timestamps ↔ libical times via helper functions:
 - **`pg_ical--1.0.0.sql`**: SQL interface definitions (CREATE TYPE, CREATE FUNCTION)
 - **`pg_ical.control`**: Extension metadata for PostgreSQL
 - **`Makefile`**: PGXS-based build configuration
+- **`Makefile.docker`**: Docker-based development/testing commands
+- **`Dockerfile`**: Multi-stage production build for distribution
+- **`Dockerfile.dev`**: Development environment with mounted source
+- **`docker-compose.yml`**: Dev and production service definitions
 - **`test.sql`**: Manual test suite demonstrating all functions
+- **`DOCKER.md`**: Complete Docker usage guide
 
 ## Key Integration Points
 

@@ -1,0 +1,68 @@
+# Docker-based development and testing commands
+
+.PHONY: help docker-build docker-dev docker-test docker-clean docker-shell docker-prod docker-publish
+
+help:
+	@echo "Docker commands for pg_ical development:"
+	@echo ""
+	@echo "  make -f Makefile.docker docker-build    - Build development Docker image"
+	@echo "  make -f Makefile.docker docker-dev      - Start development environment"
+	@echo "  make -f Makefile.docker docker-test     - Build extension and run tests"
+	@echo "  make -f Makefile.docker docker-shell    - Open shell in dev container"
+	@echo "  make -f Makefile.docker docker-prod     - Build production Docker image"
+	@echo "  make -f Makefile.docker docker-clean    - Clean up Docker resources"
+	@echo "  make -f Makefile.docker docker-publish  - Build and tag for GitHub registry"
+
+# Build development image
+docker-build:
+	docker-compose build dev
+
+# Start development environment
+docker-dev:
+	@echo "Starting PostgreSQL development environment..."
+	@echo "Connection: postgresql://postgres:postgres@localhost:5432/testdb"
+	docker-compose up -d dev
+	@echo "Waiting for PostgreSQL to start..."
+	@sleep 5
+	@echo "Development environment ready!"
+
+# Build extension and run tests inside container
+docker-test: docker-dev
+	@echo "Building extension..."
+	docker-compose exec -T dev bash -c "cd /workspace && make clean && make && make install"
+	@echo "Running tests..."
+	docker-compose exec -T dev psql -U postgres -d testdb -c "DROP EXTENSION IF EXISTS pg_ical CASCADE;"
+	docker-compose exec -T dev psql -U postgres -d testdb -c "CREATE EXTENSION pg_ical;"
+	docker-compose exec -T dev psql -U postgres -d testdb -f /workspace/test.sql
+
+# Open interactive shell in development container
+docker-shell:
+	docker-compose exec dev bash
+
+# Build production image
+docker-prod:
+	docker build -t pg_ical:latest -f Dockerfile .
+	@echo "Production image built: pg_ical:latest"
+	@echo "Test with: docker run --rm -e POSTGRES_PASSWORD=postgres -p 5432:5432 pg_ical:latest"
+
+# Clean up Docker resources
+docker-clean:
+	docker-compose down -v
+	docker system prune -f
+
+# Build and tag for GitHub Container Registry (requires GITHUB_USERNAME env var)
+docker-publish:
+	@if [ -z "$(GITHUB_USERNAME)" ]; then \
+		echo "Error: GITHUB_USERNAME environment variable not set"; \
+		echo "Usage: GITHUB_USERNAME=yourusername make -f Makefile.docker docker-publish"; \
+		exit 1; \
+	fi
+	docker build -t ghcr.io/$(GITHUB_USERNAME)/pg_ical:latest -f Dockerfile .
+	@echo ""
+	@echo "Image tagged for GitHub Container Registry:"
+	@echo "  ghcr.io/$(GITHUB_USERNAME)/pg_ical:latest"
+	@echo ""
+	@echo "To push to GitHub Container Registry:"
+	@echo "  1. Create GitHub Personal Access Token with 'write:packages' scope"
+	@echo "  2. echo \$$GITHUB_TOKEN | docker login ghcr.io -u $(GITHUB_USERNAME) --password-stdin"
+	@echo "  3. docker push ghcr.io/$(GITHUB_USERNAME)/pg_ical:latest"

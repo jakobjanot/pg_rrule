@@ -1,0 +1,21 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+.github
+
+# Build artifacts
+*.o
+*.so
+*.bc
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo

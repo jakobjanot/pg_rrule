@@ -17,7 +17,24 @@ A PostgreSQL extension that provides support for iCalendar recurrence rules (RRU
 
 ## Installation
 
-### Install Dependencies
+### Option 1: Docker (Recommended)
+
+The easiest way to get started is using Docker:
+
+```bash
+# Pull from GitHub Container Registry
+docker pull ghcr.io/jakobjanot/pg_ical:latest
+
+# Or use docker-compose for development
+make -f Makefile.docker docker-dev    # Start dev environment
+make -f Makefile.docker docker-test   # Build and test
+```
+
+See [DOCKER.md](DOCKER.md) for complete Docker setup and development guide.
+
+### Option 2: Native Installation
+
+#### Install Dependencies
 
 **macOS (Homebrew):**
 ```bash
@@ -34,7 +51,7 @@ sudo apt-get install postgresql-server-dev-all libical-dev
 sudo yum install postgresql-devel libical-devel
 ```
 
-### Build and Install Extension
+#### Build and Install Extension
 
 ```bash
 make

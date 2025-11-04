@@ -12,10 +12,7 @@
 PG_MODULE_MAGIC;
 
 /* RRULE type structure */
-typedef struct {
-    int32 vl_len_;  /* varlena header (do not touch directly!) */
-    char data[FLEXIBLE_ARRAY_MEMBER];  /* RRULE string */
-} rrule;
+typedef struct varlena rrule;  /* rrule is just a validated text type */
 
 /* Helper function to convert PostgreSQL timestamp to icaltimetype */
 static struct icaltimetype
@@ -49,7 +46,11 @@ icaltime_to_timestamp(struct icaltimetype icaltime)
 {
     struct pg_tm tm;
     fsec_t fsec = 0;
+    TimestampTz result;
+    int tz = 0;
 
+    elog(NOTICE, "icaltime_to_timestamp: year=%d month=%d day=%d", icaltime.year, icaltime.month, icaltime.day);
+    
     tm.tm_year = icaltime.year;
     tm.tm_mon = icaltime.month;
     tm.tm_mday = icaltime.day;
@@ -58,7 +59,13 @@ icaltime_to_timestamp(struct icaltimetype icaltime)
     tm.tm_sec = icaltime.second;
     tm.tm_isdst = 0;
 
-    return tm2timestamp(&tm, fsec, NULL, NULL);
+    elog(NOTICE, "Calling tm2timestamp");
+    if (tm2timestamp(&tm, fsec, &tz, &result) != 0)
+        ereport(ERROR,
+                (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+                 errmsg("timestamp out of range")));
+    
+    return result;
 }
 
 /* Input function for rrule type */
@@ -67,9 +74,8 @@ Datum
 rrule_in(PG_FUNCTION_ARGS)
 {
     char *str = PG_GETARG_CSTRING(0);
-    rrule *result;
-    size_t len;
     struct icalrecurrencetype recur;
+    text *result;
 
     /* Validate RRULE string */
     recur = icalrecurrencetype_from_string(str);
@@ -78,13 +84,10 @@ rrule_in(PG_FUNCTION_ARGS)
                 (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
                  errmsg("invalid RRULE string: \"%s\"", str)));
 
-    /* Allocate and copy */
-    len = strlen(str);
-    result = (rrule *) palloc(VARHDRSZ + len + 1);
-    SET_VARSIZE(result, VARHDRSZ + len + 1);
-    memcpy(result->data, str, len + 1);
+    /* Create text value */
+    result = cstring_to_text(str);
 
-    PG_RETURN_POINTER(result);
+    PG_RETURN_TEXT_P(result);
 }
 
 /* Output function for rrule type */
@@ -92,10 +95,10 @@ PG_FUNCTION_INFO_V1(rrule_out);
 Datum
 rrule_out(PG_FUNCTION_ARGS)
 {
-    rrule *r = (rrule *) PG_GETARG_POINTER(0);
+    text *r = PG_GETARG_TEXT_PP(0);
     char *result;
 
-    result = pstrdup(r->data);
+    result = text_to_cstring(r);
     PG_RETURN_CSTRING(result);
 }
 
@@ -127,7 +130,7 @@ rrule_occurrences(PG_FUNCTION_ARGS)
     if (SRF_IS_FIRSTCALL())
     {
         MemoryContext oldcontext;
-        rrule *r = (rrule *) PG_GETARG_POINTER(0);
+        rrule *r = (rrule *) PG_DETOAST_DATUM(PG_GETARG_DATUM(0));
         TimestampTz start_ts = PG_GETARG_TIMESTAMPTZ(1);
         TimestampTz end_ts = PG_GETARG_TIMESTAMPTZ(2);
         TimestampTz dtstart_ts = PG_GETARG_TIMESTAMPTZ(3);
@@ -142,7 +145,7 @@ rrule_occurrences(PG_FUNCTION_ARGS)
         oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
         /* Parse RRULE */
-        recur = icalrecurrencetype_from_string(r->data);
+        recur = icalrecurrencetype_from_string(text_to_cstring(r));
         
         /* Convert timestamps */
         dtstart = timestamp_to_icaltime(dtstart_ts);
@@ -203,7 +206,7 @@ rrule_next_occurrences(PG_FUNCTION_ARGS)
     if (SRF_IS_FIRSTCALL())
     {
         MemoryContext oldcontext;
-        rrule *r = (rrule *) PG_GETARG_POINTER(0);
+        rrule *r = (rrule *) PG_DETOAST_DATUM(PG_GETARG_DATUM(0));
         TimestampTz from_ts = PG_GETARG_TIMESTAMPTZ(1);
         int32 limit = PG_GETARG_INT32(2);
         TimestampTz dtstart_ts = PG_GETARG_TIMESTAMPTZ(3);
@@ -223,7 +226,7 @@ rrule_next_occurrences(PG_FUNCTION_ARGS)
                      errmsg("count must be between 1 and 10000")));
 
         /* Parse RRULE */
-        recur = icalrecurrencetype_from_string(r->data);
+        recur = icalrecurrencetype_from_string(text_to_cstring(r));
         
         /* Convert timestamps */
         dtstart = timestamp_to_icaltime(dtstart_ts);
@@ -272,7 +275,7 @@ PG_FUNCTION_INFO_V1(rrule_next_occurrence);
 Datum
 rrule_next_occurrence(PG_FUNCTION_ARGS)
 {
-    rrule *r = (rrule *) PG_GETARG_POINTER(0);
+    text *r = PG_GETARG_TEXT_PP(0);
     TimestampTz after_ts = PG_GETARG_TIMESTAMPTZ(1);
     TimestampTz dtstart_ts = PG_GETARG_TIMESTAMPTZ(2);
     
@@ -280,26 +283,48 @@ rrule_next_occurrence(PG_FUNCTION_ARGS)
     struct icaltimetype dtstart, after, next;
     icalrecur_iterator *ritr;
     TimestampTz result;
+    char *rrule_str;
 
+    elog(NOTICE, "rrule_next_occurrence called");
+    
     /* Parse RRULE */
-    recur = icalrecurrencetype_from_string(r->data);
+    rrule_str = text_to_cstring(r);
+    elog(NOTICE, "RRULE string: %s", rrule_str);
+    recur = icalrecurrencetype_from_string(rrule_str);
+    elog(NOTICE, "RRULE parsed, freq=%d", recur.freq);
     
     /* Convert timestamps */
     dtstart = timestamp_to_icaltime(dtstart_ts);
+    elog(NOTICE, "dtstart converted");
     after = timestamp_to_icaltime(after_ts);
+    elog(NOTICE, "after converted");
 
     /* Find next occurrence */
+    elog(NOTICE, "Creating iterator");
     ritr = icalrecur_iterator_new(recur, dtstart);
-    for (next = icalrecur_iterator_next(ritr); 
-         !icaltime_is_null_time(next);
-         next = icalrecur_iterator_next(ritr))
+    elog(NOTICE, "Iterator created");
+    next = icalrecur_iterator_next(ritr);
+    while (!icaltime_is_null_time(next))
     {
-        if (icaltime_compare(next, after) > 0)
+        elog(NOTICE, "Got occurrence year=%d", next.year);
+        /* Manual comparison to avoid timezone issues */
+        elog(NOTICE, "Comparing times");
+        if (next.year > after.year ||
+            (next.year == after.year && next.month > after.month) ||
+            (next.year == after.year && next.month == after.month && next.day > after.day) ||
+            (next.year == after.year && next.month == after.month && next.day == after.day &&
+             (next.hour > after.hour ||
+              (next.hour == after.hour && next.minute > after.minute) ||
+              (next.hour == after.hour && next.minute == after.minute && next.second > after.second))))
         {
+            elog(NOTICE, "Found matching occurrence, converting to timestamp");
             result = icaltime_to_timestamp(next);
+            elog(NOTICE, "Converted successfully");
             icalrecur_iterator_free(ritr);
             PG_RETURN_TIMESTAMPTZ(result);
         }
+        elog(NOTICE, "Getting next occurrence");
+        next = icalrecur_iterator_next(ritr);
     }
     
     icalrecur_iterator_free(ritr);
