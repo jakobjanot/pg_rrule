@@ -15,6 +15,9 @@ COPY Makefile ./
 COPY src/ ./src/
 COPY sql/ ./sql/
 
+# Create symlink for control file (PGXS expects it in root)
+RUN ln -sf sql/pg_rrule.control pg_rrule.control
+
 # Build extension
 RUN make
 
