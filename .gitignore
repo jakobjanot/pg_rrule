@@ -1,0 +1,9 @@
+*.o
+*.so
+*.bc
+*.sql.in
+results/
+regression.diffs
+regression.out
+tmp_check/
+*.log
