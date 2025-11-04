@@ -15,6 +15,24 @@ A PostgreSQL extension that provides support for iCalendar recurrence rules (RRU
 - libical 3.0 or later
 - pg_config (usually included with PostgreSQL development packages)
 
+## Quick Start with Docker
+
+The fastest way to try pg_ical:
+
+```bash
+# Run the example application
+cd examples
+docker-compose up
+
+# Or just pull and run the image
+docker run -d \
+  -e POSTGRES_PASSWORD=mysecretpassword \
+  -p 5432:5432 \
+  ghcr.io/jakobjanot/pg_ical:latest
+```
+
+See [examples/README.md](examples/README.md) for a complete working demo, or [docs/USAGE_IN_DOCKER.md](docs/USAGE_IN_DOCKER.md) for integration guide.
+
 ## Installation
 
 ### Option 1: Docker (Recommended)

@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: ghcr.io/jakobjanot/pg_ical:latest
+    environment:
+      POSTGRES_DB: calendar
+      POSTGRES_USER: caluser
+      POSTGRES_PASSWORD: calpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caluser -d calendar"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://caluser:calpass@postgres:5432/calendar
+    volumes:
+      - ./app.py:/app/app.py
+
+volumes:
+  postgres-data:
