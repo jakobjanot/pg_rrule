@@ -62,6 +62,71 @@ docker exec -it pg-rrule psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS pg_
 ```
 Adjust paths for other PostgreSQL major versions.
 
+### Bake Into a Docker Image
+
+If you prefer embedding the extension in your own image based on the official `postgres` image:
+
+```Dockerfile
+# Dockerfile
+FROM postgres:16
+
+# Copy prebuilt extension files from a release tarball you extracted locally
+# Adjust the version and PostgreSQL major version paths as needed
+COPY ./pg_rrule-<version>/pg_rrule.so /usr/lib/postgresql/16/lib/pg_rrule.so
+COPY ./pg_rrule-<version>/pg_rrule.control /usr/share/postgresql/16/extension/pg_rrule.control
+COPY ./pg_rrule-<version>/pg_rrule--1.0.0.sql /usr/share/postgresql/16/extension/pg_rrule--1.0.0.sql
+
+# Optional: auto-create the extension on first database init
+COPY ./init/01_create_pg_rrule.sql /docker-entrypoint-initdb.d/01_create_pg_rrule.sql
+```
+
+Where `init/01_create_pg_rrule.sql` contains:
+
+```sql
+-- init/01_create_pg_rrule.sql
+CREATE EXTENSION IF NOT EXISTS pg_rrule;
+```
+
+Build and run:
+
+```bash
+docker build -t my-postgres:with-pg-rrule .
+docker run --rm -e POSTGRES_PASSWORD=pass -p 5432:5432 my-postgres:with-pg-rrule
+```
+
+Notes:
+- The paths above match Debian-based `postgres:16` images. For other majors, change `16` accordingly.
+- Alpine-based images use different directories; consult that image’s documentation.
+
+### docker-compose Example
+
+Using bind mounts with `docker-compose` to load the extension:
+
+```yaml
+# docker-compose.yml
+services:
+    db:
+        image: postgres:16
+        environment:
+            POSTGRES_PASSWORD: pass
+            POSTGRES_DB: app
+        ports:
+            - "5432:5432"
+        volumes:
+            # Mount extension files (adjust version and paths)
+            - ./pg_rrule-<version>/pg_rrule.so:/usr/lib/postgresql/16/lib/pg_rrule.so:ro
+            - ./pg_rrule-<version>/pg_rrule.control:/usr/share/postgresql/16/extension/pg_rrule.control:ro
+            - ./pg_rrule-<version>/pg_rrule--1.0.0.sql:/usr/share/postgresql/16/extension/pg_rrule--1.0.0.sql:ro
+            # Auto-create extension at init (optional)
+            - ./init:/docker-entrypoint-initdb.d:ro
+```
+
+Create the `init/01_create_pg_rrule.sql` file with:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_rrule;
+```
+
 ### From Source (Native Installation)
 
 #### Install Dependencies
