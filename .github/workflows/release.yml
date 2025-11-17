@@ -140,59 +140,9 @@ jobs:
           path: release/pg_rrule-${{ steps.version.outputs.VERSION }}-macos-${{ matrix.arch }}.tar.gz
           retention-days: 1
   
-  build-docker:
-    name: Build Multi-arch Docker Images
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set version
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-            echo "TAG=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-            echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Build and push Docker images
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
-            ghcr.io/${{ github.repository }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-  
   create-release:
     name: Create GitHub Release
-    needs: [build-linux, build-macos, build-docker]
+    needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -240,13 +190,7 @@ jobs:
           
           ### Installation
           
-          #### Docker (Recommended - Multi-arch)
-          Supports both `amd64` and `arm64` architectures:
-          ```bash
-          docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
-          ```
-          
-          #### From Binary
+          #### From Binaries
           
           Download the appropriate binary for your platform:
           
@@ -275,6 +219,30 @@ jobs:
           sudo cp pg_rrule--1.0.0.sql $(pg_config --sharedir)/extension/
           ```
           
+          #### Use with Docker (official postgres)
+          
+          Use the official `postgres` image and mount the extension files:
+          
+          ```bash
+          # Download and extract the binary artifacts for your platform
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.TAG }}/pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
+          tar -xzf pg_rrule-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
+          
+          # Run postgres:16 and bind-mount the extension files
+          docker run --name pg-rrule -d \
+            -e POSTGRES_PASSWORD=pass \
+            -p 5432:5432 \
+            -v "$PWD/pg_rrule-${{ steps.version.outputs.VERSION }}/pg_rrule.so":/usr/lib/postgresql/16/lib/pg_rrule.so:ro \
+            -v "$PWD/pg_rrule-${{ steps.version.outputs.VERSION }}/pg_rrule.control":/usr/share/postgresql/16/extension/pg_rrule.control:ro \
+            -v "$PWD/pg_rrule-${{ steps.version.outputs.VERSION }}/pg_rrule--1.0.0.sql":/usr/share/postgresql/16/extension/pg_rrule--1.0.0.sql:ro \
+            postgres:16
+          
+          # Create the extension
+          docker exec -it pg-rrule psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS pg_rrule;"
+          ```
+          
+          Adjust the paths if using a different PostgreSQL major version.
+          
           #### From Source
           Works on any platform with PostgreSQL development tools:
           ```bash
@@ -300,7 +268,6 @@ jobs:
           - ✅ Linux ARM64 (aarch64)
           - ✅ macOS x86_64 (Intel)
           - ✅ macOS ARM64 (Apple Silicon M1/M2/M3)
-          - ✅ Docker (multi-arch: amd64, arm64)
           
           ### Checksums
           See `checksums.txt` for SHA256 verification of all binaries.
@@ -335,9 +302,5 @@ jobs:
           echo "- x86_64 (Intel)" >> $GITHUB_STEP_SUMMARY
           echo "- arm64 (Apple Silicon)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Docker:**" >> $GITHUB_STEP_SUMMARY
-          echo "- Multi-arch (linux/amd64, linux/arm64)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Links" >> $GITHUB_STEP_SUMMARY
           echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.TAG }})" >> $GITHUB_STEP_SUMMARY
-          echo "- [Docker Image](https://github.com/${{ github.repository }}/pkgs/container/pg_rrule)" >> $GITHUB_STEP_SUMMARY

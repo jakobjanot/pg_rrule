@@ -1,6 +1,5 @@
 # pg_rrule - PostgreSQL iCalendar RRULE Extension
 
-[![Build](https://github.com/jakobjanot/pg_rrule/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/jakobjanot/pg_rrule/actions/workflows/docker-publish.yml)
 [![Tests](https://github.com/jakobjanot/pg_rrule/actions/workflows/test.yml/badge.svg)](https://github.com/jakobjanot/pg_rrule/actions/workflows/test.yml)
 [![Quality](https://github.com/jakobjanot/pg_rrule/actions/workflows/quality.yml/badge.svg)](https://github.com/jakobjanot/pg_rrule/actions/workflows/quality.yml)
 
@@ -19,42 +18,51 @@ A PostgreSQL extension that provides support for iCalendar recurrence rules (RRU
 - libical 3.0 or later
 - pg_config (usually included with PostgreSQL development packages)
 
-## Quick Start with Docker
-
-The fastest way to try pg_rrule:
-
-```bash
-# Run the example application
-cd examples
-docker-compose up
-
-# Or just pull and run the image
-docker run -d \
-  -e POSTGRES_PASSWORD=mysecretpassword \
-  -p 5432:5432 \
-  ghcr.io/jakobjanot/pg_rrule:latest
-```
-
-See [examples/README.md](examples/README.md) for a complete working demo, or [docs/USAGE_IN_DOCKER.md](docs/USAGE_IN_DOCKER.md) for integration guide.
-
 ## Installation
 
-### Option 1: Docker (Recommended)
+### From Binaries
 
-The easiest way to get started is using Docker:
+Download a release tarball for your OS/architecture from GitHub Releases and copy files to PostgreSQL directories.
 
+Linux example (PostgreSQL 16 on Debian-based distros):
 ```bash
-# Pull from GitHub Container Registry
-docker pull ghcr.io/jakobjanot/pg_rrule:latest
-
-# Or use docker-compose for development
-make -f Makefile.docker docker-dev    # Start dev environment
-make -f Makefile.docker docker-test   # Build and test
+tar -xzf pg_rrule-<version>-linux-x86_64.tar.gz
+cd pg_rrule-<version>
+sudo cp pg_rrule.so /usr/lib/postgresql/16/lib/
+sudo cp pg_rrule.control /usr/share/postgresql/16/extension/
+sudo cp pg_rrule--1.0.0.sql /usr/share/postgresql/16/extension/
 ```
 
-See [docs/DOCKER.md](docs/DOCKER.md) for complete Docker setup and development guide.
+macOS example:
+```bash
+tar -xzf pg_rrule-<version>-macos-<arch>.tar.gz
+cd pg_rrule-<version>
+sudo cp pg_rrule.so $(pg_config --pkglibdir)/
+sudo cp pg_rrule.control $(pg_config --sharedir)/extension/
+sudo cp pg_rrule--1.0.0.sql $(pg_config --sharedir)/extension/
+```
 
-### Option 2: Native Installation
+### Use with Docker (official postgres)
+
+Use the official `postgres` image and bind-mount the extension files (example for PostgreSQL 16):
+```bash
+# Extract binaries for your platform
+tar -xzf pg_rrule-<version>-linux-x86_64.tar.gz
+
+docker run --name pg-rrule -d \
+    -e POSTGRES_PASSWORD=pass \
+    -p 5432:5432 \
+    -v "$PWD/pg_rrule-<version>/pg_rrule.so":/usr/lib/postgresql/16/lib/pg_rrule.so:ro \
+    -v "$PWD/pg_rrule-<version>/pg_rrule.control":/usr/share/postgresql/16/extension/pg_rrule.control:ro \
+    -v "$PWD/pg_rrule-<version>/pg_rrule--1.0.0.sql":/usr/share/postgresql/16/extension/pg_rrule--1.0.0.sql:ro \
+    postgres:16
+
+# Create the extension
+docker exec -it pg-rrule psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS pg_rrule;"
+```
+Adjust paths for other PostgreSQL major versions.
+
+### From Source (Native Installation)
 
 #### Install Dependencies
 
@@ -84,7 +92,7 @@ make
 sudo make install
 ```
 
-**Note**: The symlink `pg_rrule.control → sql/pg_rrule.control` is required because PostgreSQL's build system (PGXS) expects the control file in the project root. This symlink is excluded from version control.
+**Note**: The symlink `pg_rrule.control → sql/pg_rrule.control` is required because PostgreSQL's build system (PGXS) expects the control file in the project root.
 
 ### Enable Extension
 
@@ -246,7 +254,6 @@ This project uses GitHub Actions for automated testing, building, and releases.
 
 - **Automated Tests**: Run on every push and PR
 - **Multi-version PostgreSQL**: Tested against PostgreSQL 12-16
-- **Docker Images**: Automatically published to GitHub Container Registry
 - **Releases**: Create a tag `vX.Y.Z` to trigger automated release builds
 
 See [docs/CI_CD.md](docs/CI_CD.md) for complete CI/CD documentation.
@@ -261,8 +268,7 @@ git push origin v1.0.0
 This automatically:
 1. Runs all tests
 2. Builds binary and source artifacts
-3. Publishes Docker image to `ghcr.io/jakobjanot/pg_rrule:v1.0.0`
-4. Creates GitHub release with downloadable artifacts
+3. Creates GitHub release with downloadable artifacts
 
 ## License
 
